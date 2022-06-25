@@ -42,6 +42,12 @@ struct GravitationalSystem{bType <: MassBody,
     G::gType
 end
 
+struct GravitationalParameters{gType <: Real} <:PotentialParameters
+    G::gType
+end
+
+GravitationalParameters() = GravitationalParameters(6.674e-11)
+
 function GravAcc!(dv,
                   rs,
                   i,
@@ -68,6 +74,18 @@ end
 #####################################################################
 
 PotentialNBodySystem(system::PotentialNBodySystem) = system
+
+function PotentialNBodySystem(bodies::Vector{<:Body},
+                              potentials::Vector{Symbol}=[])
+
+    parameters = Dict{Symbol, PotentialParameters}()
+
+    if :gravitational ∈ potentials
+        parameters[:gravitational] = GravitationalParameters()
+    end
+
+    PotentialNBodySystem(bodies, parameters)
+end
 
 function PotentialNBodySystem(system::GravitationalSystem)
 
