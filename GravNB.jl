@@ -12,6 +12,7 @@ begin
 	using LinearAlgebra
 	using Plots
 	plotly()
+	theme(:juno)
 end
 
 # ╔═╡ 976f3269-cc2c-4424-a216-fbf826c83b14
@@ -105,10 +106,11 @@ end
 begin
 	body1 = MassBody(SVector(0.0, 1.0, 0.0), SVector( 1e-3, 0.0, 1e-6), 20.0)
 	body2 = MassBody(SVector(0.0, -1.0, 0.0), SVector(-1e-3, 0.0, 1e-6), 20.0)
-	body3 = MassBody(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, 0.0), 1e4)
+	body3 = MassBody(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, -1e-6), 1e4)
+	body4 = MassBody(SVector(-1.0, 0.0, -1.0), SVector(0.0, 3e-4, 3e-4), 1e2)
 	G = 6.673e-11
 	tspan = (0.0, 200000.0)
-	gsystem = GravitationalSystem([body1,body2,body3], G)
+	gsystem = GravitationalSystem([body1,body2,body3,body4], G)
 	gsim = Simulation(gsystem,tspan)
 end
 
@@ -144,10 +146,16 @@ end
 unoproblemo = ODEProblem(gsim)
 
 # ╔═╡ 220cf615-e813-4617-bb42-9f36d896545e
-soln = solve(unoproblemo;abstol=1e-15,reltol=1e-10);
+soln = solve(unoproblemo;abstol=1e-10,reltol=1e-8);
 
-# ╔═╡ c01f104e-aa23-4917-b2fe-3d12f5e9ae9e
-plot(soln[1,:],soln[2,:],soln[3,:]);plot!(soln[4,:],soln[5,:],soln[6,:]);plot!(soln[7,:],soln[8,:],soln[9,:])
+# ╔═╡ d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
+begin
+	p=plot()
+	for i in 1:3:3*length(gsim.system.bodies)
+		p=plot!(soln[i,:],soln[i+1,:],soln[i+2,:])
+	end
+	p
+end
 
 # ╔═╡ 0925c84e-1266-47da-9cc4-6a650112157e
 begin
@@ -1683,7 +1691,7 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─aae3eaa8-3f19-49cc-b2b8-ecaac6fd9bed
+# ╠═aae3eaa8-3f19-49cc-b2b8-ecaac6fd9bed
 # ╠═976f3269-cc2c-4424-a216-fbf826c83b14
 # ╠═f3055fe0-725c-4271-9bed-15738eb8f3bb
 # ╠═e8c40223-4241-4568-9d98-231e667bc006
@@ -1697,7 +1705,7 @@ version = "0.9.1+5"
 # ╠═dff6e524-3c77-4203-b725-3a575381ee1b
 # ╠═ab1b3dc2-810f-48bd-9ff0-782b491be7d3
 # ╠═220cf615-e813-4617-bb42-9f36d896545e
-# ╠═c01f104e-aa23-4917-b2fe-3d12f5e9ae9e
+# ╠═d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
 # ╠═0925c84e-1266-47da-9cc4-6a650112157e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
