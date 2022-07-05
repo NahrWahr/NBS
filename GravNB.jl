@@ -17,9 +17,9 @@ end
 
 # ╔═╡ 976f3269-cc2c-4424-a216-fbf826c83b14
 DiffEqBase.@def PosVelMass begin
-    r::SVector{3, Real}
-    v::SVector{3, Real}
-    m::Real
+    r::SVector{3, Float64}
+    v::SVector{3, Float64}
+    m::Float64
 end
 
 # ╔═╡ f3055fe0-725c-4271-9bed-15738eb8f3bb
@@ -28,24 +28,26 @@ struct MassBody
 end
 
 # ╔═╡ e8c40223-4241-4568-9d98-231e667bc006
-struct GravitationalSystem{bType <: MassBody}
+struct GravitationalSystem{bType <: MassBody, gType <: Float64}
     bodies::Vector{bType}
-    G::Real
+    G::gType
 end
 
 # ╔═╡ aad3c2dc-11a8-4bdb-869c-1449d5e0be10
-struct Simulation
+struct Simulation{tType <: Float64}
 	system::GravitationalSystem
-	tspan::Tuple{Real,Real}
+	tspan::Tuple{tType,tType}
 end
 
 # ╔═╡ 0a632856-3998-4f2d-855e-dd74df96ef8d
 function Sim(system, tspan)
+	
 	Simulation(system, tspan)
 end
 
 # ╔═╡ 8c651cee-0563-4b53-962e-b04d1b221115
 function GetInitialCoOrdinates(Simulation::Simulation)
+	
 	bodies = Simulation.system.bodies
 
 	n = length(bodies)
@@ -60,25 +62,6 @@ function GetInitialCoOrdinates(Simulation::Simulation)
 
 	return (u0, v0, n)
 end
-
-# ╔═╡ 4731ee8e-8e1e-4b4c-ab51-2a0989aa7a74
-"""begin
-function gather_accelerations_for_potentials(simulation::NBodySimulation{<:PotentialNBodySystem})
-    acceleration_functions = []
-
-    for (potential, parameters) in simulation.system.potentials
-        push!(acceleration_functions, get_accelerating_function(parameters, simulation))
-    end
-
-    acceleration_functions
-end
-
-	
-function get_accelerating_function(parameters::GravitationalParameters, simulation::NBodySimulation)
-    (dv, u, v, t, i) -> gravitational_acceleration!(dv, u, i, length(simulation.system.bodies), simulation.system.bodies, parameters)
-end
-
-end"""
 
 # ╔═╡ 0da123fa-2605-4057-807e-17b701156dbc
 function GravAcc!(dv::MArray,
@@ -107,15 +90,23 @@ begin
 	body1 = MassBody(SVector(0.0, 1.0, 0.0), SVector( 1e-3, 0.0, 1e-6), 20.0)
 	body2 = MassBody(SVector(0.0, -1.0, 0.0), SVector(-1e-3, 0.0, 1e-6), 20.0)
 	body3 = MassBody(SVector(0.0, 0.0, 0.0), SVector(0.0, 0.0, -1e-6), 1e4)
-	body4 = MassBody(SVector(-1.0, 0.0, -1.0), SVector(0.0, 3e-4, 3e-4), 1e2)
+	
+	MyCenteredRand(n = 1, Scale = 5, Bias = -0.5) = 2*Scale*(rand(n) .+ Bias)
+	
+	bodies = [MassBody(SVector(MyCenteredRand(3)...), 
+			  SVector(MyCenteredRand(3, 1e-5)...), 
+			  1e5*rand()) 
+			  for _=1:4]
+	
 	G = 6.673e-11
 	tspan = (0.0, 200000.0)
-	gsystem = GravitationalSystem([body1,body2,body3,body4], G)
+	gsystem = GravitationalSystem(bodies, G)
 	gsim = Simulation(gsystem,tspan)
 end
 
 # ╔═╡ c619ec59-d1ca-4500-8b66-e2c592293844
 function DiffEqBase.ODEProblem(Simulation::Simulation)
+	
 	(u0,v0,n) = GetInitialCoOrdinates(Simulation)
 	Acc! = GravAcc!
 
@@ -134,36 +125,34 @@ function DiffEqBase.ODEProblem(Simulation::Simulation)
 	return ODEProblem(ODEsys!, hcat(u0, v0), Simulation.tspan)
 end
 
-# ╔═╡ 4553c720-040f-425d-9284-b32451f9f8a3
-begin
-	a = MVector(0.0,0.0,0.0)
-	u0,v0,n = GetInitialCoOrdinates(gsim)
-	IC= hcat(u0,v0)
-	GravAcc!(a, IC, 1, 2, gsim.system.bodies, G)
-end
-
 # ╔═╡ ab1b3dc2-810f-48bd-9ff0-782b491be7d3
 unoproblemo = ODEProblem(gsim)
 
+# ╔═╡ b2816b68-d925-459d-8abe-308225dc166e
+function PropagateOrbit(Problem::ODEProblem)
+	Soln = solve(Problem, Tsit5(); maxiters=1e6);
+	return Soln
+end
+
 # ╔═╡ 220cf615-e813-4617-bb42-9f36d896545e
-soln = solve(unoproblemo;abstol=1e-10,reltol=1e-8);
+@time soln = PropagateOrbit(unoproblemo);
 
 # ╔═╡ d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
 begin
-	p=plot()
+	p=plot(xlim=(-5,5), ylim=(-5,5), zlim=(-5,5), size = (1200,900))
+	
 	for i in 1:3:3*length(gsim.system.bodies)
-		p=plot!(soln[i,:],soln[i+1,:],soln[i+2,:])
+		
+		p=plot!(soln[i,:],
+				soln[i+1,:],
+				soln[i+2,:], 
+				)
+		
 	end
-	p
 end
 
-# ╔═╡ 0925c84e-1266-47da-9cc4-6a650112157e
-begin
-	f(u,p,t) = u
-	f0 = 1
-	t=(0,10)
-	prob=ODEProblem(f, f0, t)
-end
+# ╔═╡ ac823588-f122-4417-b4db-a754a9bd8f1f
+savefig(p, "/home/rnarwar/Desktop/Out.html")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1698,14 +1687,13 @@ version = "0.9.1+5"
 # ╠═aad3c2dc-11a8-4bdb-869c-1449d5e0be10
 # ╠═0a632856-3998-4f2d-855e-dd74df96ef8d
 # ╠═8c651cee-0563-4b53-962e-b04d1b221115
-# ╟─4731ee8e-8e1e-4b4c-ab51-2a0989aa7a74
 # ╠═0da123fa-2605-4057-807e-17b701156dbc
 # ╠═c619ec59-d1ca-4500-8b66-e2c592293844
-# ╠═4553c720-040f-425d-9284-b32451f9f8a3
 # ╠═dff6e524-3c77-4203-b725-3a575381ee1b
 # ╠═ab1b3dc2-810f-48bd-9ff0-782b491be7d3
+# ╠═b2816b68-d925-459d-8abe-308225dc166e
 # ╠═220cf615-e813-4617-bb42-9f36d896545e
 # ╠═d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
-# ╠═0925c84e-1266-47da-9cc4-6a650112157e
+# ╠═ac823588-f122-4417-b4db-a754a9bd8f1f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
