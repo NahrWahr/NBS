@@ -40,7 +40,7 @@ struct Simulation{tType <: Float64}
 end
 
 # ╔═╡ 0a632856-3998-4f2d-855e-dd74df96ef8d
-function Sim(system, tspan)
+function Sim(system::GravitationalSystem, tspan::Tuple)
 	
 	Simulation(system, tspan)
 end
@@ -93,13 +93,13 @@ begin
 	
 	MyCenteredRand(n = 1, Scale = 5, Bias = -0.5) = 2*Scale*(rand(n) .+ Bias)
 	
-	bodies = [MassBody(SVector(MyCenteredRand(3)...), 
-			  SVector(MyCenteredRand(3, 1e-5)...), 
-			  1e5*rand()) 
-			  for _=1:4]
+	bodies = [MassBody(SVector(MyCenteredRand(3)...), # Position
+			  SVector(MyCenteredRand(3, 1e-5)...), # Velocity
+			  1e5*rand()) # Mass
+			  for _=1:2]
 	
-	G = 6.673e-11
-	tspan = (0.0, 200000.0)
+	const G = 6.673e-11
+	tspan = (-10.0, 200000.0)
 	gsystem = GravitationalSystem(bodies, G)
 	gsim = Simulation(gsystem,tspan)
 end
@@ -125,17 +125,17 @@ function DiffEqBase.ODEProblem(Simulation::Simulation)
 	return ODEProblem(ODEsys!, hcat(u0, v0), Simulation.tspan)
 end
 
-# ╔═╡ ab1b3dc2-810f-48bd-9ff0-782b491be7d3
-unoproblemo = ODEProblem(gsim)
-
 # ╔═╡ b2816b68-d925-459d-8abe-308225dc166e
-function PropagateOrbit(Problem::ODEProblem)
+function SolveOrbit(Problem::ODEProblem)
 	Soln = solve(Problem, Tsit5(); maxiters=1e6);
 	return Soln
 end
 
 # ╔═╡ 220cf615-e813-4617-bb42-9f36d896545e
-@time soln = PropagateOrbit(unoproblemo);
+begin
+	unoproblemo = ODEProblem(gsim); @time soln = SolveOrbit(unoproblemo);
+	unoproblemo
+end
 
 # ╔═╡ d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
 begin
@@ -149,10 +149,8 @@ begin
 				)
 		
 	end
+	#savefig(p , "/home/rnarwar/Desktop/Out.html")
 end
-
-# ╔═╡ ac823588-f122-4417-b4db-a754a9bd8f1f
-savefig(p, "/home/rnarwar/Desktop/Out.html")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1690,10 +1688,8 @@ version = "0.9.1+5"
 # ╠═0da123fa-2605-4057-807e-17b701156dbc
 # ╠═c619ec59-d1ca-4500-8b66-e2c592293844
 # ╠═dff6e524-3c77-4203-b725-3a575381ee1b
-# ╠═ab1b3dc2-810f-48bd-9ff0-782b491be7d3
 # ╠═b2816b68-d925-459d-8abe-308225dc166e
 # ╠═220cf615-e813-4617-bb42-9f36d896545e
 # ╠═d2b872bb-2fb0-4d0e-ba57-3e0c76bcc39e
-# ╠═ac823588-f122-4417-b4db-a754a9bd8f1f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
